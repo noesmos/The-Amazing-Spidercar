@@ -1,0 +1,14 @@
+MechanicToDo
+
+- Make the hook not launch the car on unsuccessful shoot
+
+- Raycast the target position on the hook when shooting
+  - Show the target point
+
+- Activate/Deactivate visual effects
+
+- Swing controls when swinging
+
+- Camera control
+
+- Camera follow

@@ -1,0 +1,25 @@
+visual
+
+
+
+Make "empty" vehicle mesh *
+ - with tuned windows temporarely *
+ - one seat 
+ - steering wheel
+ - character
+ - engine in back 
+ - exhaustion pipe *
+
+Texture:
+ - Wheel 
+ - vehicle
+
+Animation:
+ - engine cylinder based on speed and shake
+ - exhaustion pipe shake *
+ - character turning based on turn amount (or blend!)
+
+Effect:
+ - lights on car *
+ - smoke and and fire from exhaustion pipe *
+ - wind 
