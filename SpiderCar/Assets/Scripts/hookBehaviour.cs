@@ -22,11 +22,10 @@ public class hookBehaviour : MonoBehaviour
     bool shotBool;
 
     //Rope
-    List<Vector3> ropePoints;
-    RaycastHit toBaseHit;
-    bool toBaseBool;
-    RaycastHit toPrevHit;
-    bool toPrevBool;
+    List<Vector3> ropePoints = new List<Vector3>();
+    RaycastHit baseHit;
+    bool baseRayBlocked;
+    bool prevRayBlocked;
     float remainingLength;
 
 
@@ -44,14 +43,42 @@ public class hookBehaviour : MonoBehaviour
         layerMask = ~LayerMask.GetMask("Car"); //set layerMask to exclude Car layer
     }
 
-
-
     public bool GetIsHooked()
     {
         return isHooked;
     }
 
-    private SoftJointLimit SetLinearLimit(ConfigurableJoint joint,  float Lenght)
+    public void RopeBendingCheck()
+    {
+        Debug.Log("ropePoints " + ropePoints.Count);
+        Vector3 hookToRopePoint = hookBase.transform.position - ropePoints[ropePoints.Count - 1];
+
+        baseRayBlocked = Physics.Raycast(hookBase.transform.position, hookToRopePoint, out baseHit, hookToRopePoint.magnitude - 1, layerMask); // giving some leeway to max distance be subtracting 1
+        if (baseRayBlocked)
+        {
+            AddToRopePoint(baseHit.point);
+        }
+        if (ropePoints.Count >=2) // if the rope is bending on some surface.
+        {
+            prevRayBlocked = Physics.Raycast(hookBase.transform.position, ropePoints[ropePoints.Count-2], maxLength, layerMask);
+            if (!prevRayBlocked)
+            {
+                RemoveNewestRopePoint();
+            }
+        }
+        DebugRope();
+    }
+
+    private void DebugRope()
+    {
+        for (int i = 1; i < ropePoints.Count; i++)
+        {
+            Debug.DrawRay(ropePoints[i-1], ropePoints[i] - ropePoints[i-1], Color.yellow, 1);
+        }
+        Debug.DrawRay(ropePoints[ropePoints.Count-1], hookBase.transform.position - ropePoints[ropePoints.Count - 1], Color.yellow, 1);
+    }
+
+    private SoftJointLimit SetLinearLimit(ConfigurableJoint joint, float Lenght)
     {
         SoftJointLimit softJoint = joint.linearLimit;
         softJoint.limit = Lenght;
@@ -63,7 +90,7 @@ public class hookBehaviour : MonoBehaviour
     {
         if (boolean)
         {
-            rb.constraints = RigidbodyConstraints.FreezePosition; 
+            rb.constraints = RigidbodyConstraints.FreezePosition;
         }
         else
         {
@@ -77,16 +104,37 @@ public class hookBehaviour : MonoBehaviour
         HighlightCrosshair(shotBool);
     }
 
+    private void AddToRopePoint(Vector3 point)
+    {
+        transform.position = point;
+        ropePoints.Add(point);
+        SetRemainingLength();
+    }
+    private void RemoveNewestRopePoint()
+    {
+        ropePoints.Remove(ropePoints[ropePoints.Count - 1]);
+        transform.position = ropePoints[ropePoints.Count - 1];
+        SetRemainingLength();
+
+    }
+
+    private void SetRemainingLength()
+    {
+        remainingLength = maxLength;
+        for (int i = 1; i < ropePoints.Count; i++)
+        {
+            remainingLength -= Vector3.Distance(ropePoints[i - 1], ropePoints[i]);
+        }
+        joint.linearLimit = SetLinearLimit(joint, remainingLength);
+    }
+
     public void ShootHook()
     {
         if(shotBool) //if the ray cast did hit something,
         {
-            transform.position = shotHit.point; //move hook to hit point
+            AddToRopePoint(shotHit.point); //move hook to hit point
 
-            hookToBase = Vector3.Distance(transform.position, hookBase.transform.position); //distance to hook from base
-            joint.linearLimit = SetLinearLimit(joint, hookToBase);
-
-            transform.SetParent(shotHit.transform);
+            transform.SetParent(shotHit.transform); // set the object that was hit as a parent
         }
         else
         {
@@ -99,6 +147,7 @@ public class hookBehaviour : MonoBehaviour
     {
         transform.SetPositionAndRotation(hookBase.transform.position, hookBase.transform.rotation);
         UniversalFunctions.SetGlobalScale(transform, new Vector3 (0.1f,0.1f, 0.2f));
+        ropePoints.Clear();
 
         transform.SetParent(joint.transform);
     }

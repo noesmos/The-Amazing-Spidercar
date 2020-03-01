@@ -50733,6 +50733,10 @@ PrefabInstance:
       propertyPath: crosshair
       value: 
       objectReference: {fileID: 1510859134}
+    - target: {fileID: 1150168381, guid: 8fb1c3d63eca50f4a8004cb7893bb54d, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 1314636113, guid: 8fb1c3d63eca50f4a8004cb7893bb54d, type: 3}
       propertyPath: m_LocalPosition.y
       value: 0.05

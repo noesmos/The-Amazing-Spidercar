@@ -212,6 +212,10 @@ public class InputManager2 : MonoBehaviour
             }
             hb.SetCrosshair(false);
         }
+        if (hb.GetIsHooked())
+        {
+            hb.RopeBendingCheck();
+        }
 
 
         if (Input.GetButtonDown(aimMode))
