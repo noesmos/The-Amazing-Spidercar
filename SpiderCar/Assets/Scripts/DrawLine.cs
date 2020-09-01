@@ -7,17 +7,30 @@ public class DrawLine : MonoBehaviour
     LineRenderer line;
 
     GameObject hookBase;
+
+    List<GameObject> ropePoints;
+    hookBehaviour hb;
     // Start is called before the first frame update
     void Start()
     {
         line = GetComponent<LineRenderer>();
+        hb = GetComponent<hookBehaviour>();
         hookBase= GameObject.Find("Hook Base");
     }
 
     // Update is called once per frame
     void Update()
     {
-         line.SetPosition(0, transform.position);
-         line.SetPosition(1, hookBase.transform.position);
+        ropePoints = hb.GetRopePoints();
+        Debug.Log("ropePoints: " + ropePoints.Count);
+        line.positionCount = ropePoints.Count+1;
+
+        for (int i = 0; i < ropePoints.Count; i++)
+        {
+            line.SetPosition(i, ropePoints[i].transform.position);
+        }
+
+
+        line.SetPosition(ropePoints.Count, hookBase.transform.position);
     }
 }

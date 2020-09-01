@@ -5,13 +5,18 @@ using UnityEngine.UI;
 
 public class hookBehaviour : MonoBehaviour
 {
+    public GameObject ropePoint;
     public float hookVelocity;
     bool isHooked = false;
     Rigidbody rb;
     GameObject hookBase;
     ConfigurableJoint joint;
     public float maxLength;
+    public float minLength;
+    float CurrentLength;
     public float hookToBase;
+
+
 
     //UI
     public Image crosshair;
@@ -22,17 +27,22 @@ public class hookBehaviour : MonoBehaviour
     bool shotBool;
 
     //Rope
-    List<Vector3> ropePoints = new List<Vector3>();
+    List<GameObject> rp = new List<GameObject>();
     RaycastHit baseHit;
-    bool baseRayBlocked;
-    bool prevRayBlocked;
+    RaycastHit pointHit;
+    bool newPointBlocked;
+    bool prevPointBlocked;
     float remainingLength;
 
-
+    //Reel Rope
+    public float reelSpeed;
+    public float quickReelMultiplier;
 
     // Start is called before the first frame update
     void Start()
     {
+        CurrentLength = maxLength;
+
         rb = GetComponent<Rigidbody>();
         hookBase = GameObject.Find("Hook Base");
 
@@ -50,32 +60,63 @@ public class hookBehaviour : MonoBehaviour
 
     public void RopeBendingCheck()
     {
-        Debug.Log("ropePoints " + ropePoints.Count);
-        Vector3 hookToRopePoint = hookBase.transform.position - ropePoints[ropePoints.Count - 1];
+        //Debug.Log("ropePoints " + rp.Count);
+        Vector3 newPoint = rp[rp.Count - 1].transform.position;
+        Vector3 base2NewPoint = newPoint - hookBase.transform.position;
 
-        baseRayBlocked = Physics.Raycast(hookBase.transform.position, hookToRopePoint, out baseHit, hookToRopePoint.magnitude - 1, layerMask); // giving some leeway to max distance be subtracting 1
-        if (baseRayBlocked)
-        {
-            AddToRopePoint(baseHit.point);
+        //
+        newPointBlocked = Physics.Raycast(hookBase.transform.position, base2NewPoint, out baseHit, base2NewPoint.magnitude-1, layerMask); // giving some leeway to max distance be subtracting 1
+        if (newPointBlocked)
+        {    
+            newPoint = baseHit.collider.ClosestPoint(baseHit.point);
+            AddRopePoint(newPoint, baseHit.transform);
         }
-        if (ropePoints.Count >=2) // if the rope is bending on some surface.
+
+        if (rp.Count > 1) // if the rope is bending on some surface.
         {
-            prevRayBlocked = Physics.Raycast(hookBase.transform.position, ropePoints[ropePoints.Count-2], maxLength, layerMask);
-            if (!prevRayBlocked)
+            Vector3 base2PrevPoint = rp[rp.Count - 2].transform.position - hookBase.transform.position;
+            prevPointBlocked = Physics.Raycast(hookBase.transform.position, base2PrevPoint, base2PrevPoint.magnitude - 1, layerMask);
+            
+            if (!prevPointBlocked)
             {
-                RemoveNewestRopePoint();
+                Vector3 nearestPoint = hookBase.transform.position + Vector3.Project(rp[rp.Count - 1].transform.position - hookBase.transform.position, base2PrevPoint);   
+                Vector3 nearestVector = rp[rp.Count - 1].transform.position - nearestPoint;
+
+                //Debug.DrawRay(nearestPoint, nearestVector, Color.blue);
+
+                if (!Physics.Raycast(nearestPoint, nearestVector, nearestVector.magnitude - 0.1f, layerMask))
+                {
+                    RemoveNewestRopePoint();
+                }
             }
         }
         DebugRope();
     }
 
-    private void DebugRope()
+    private void AddRopePoint(Vector3 point, Transform parent)
     {
-        for (int i = 1; i < ropePoints.Count; i++)
+        Debug.Log("adding first point");
+        transform.position = point;
+        rp.Add(Instantiate(ropePoint, point, Quaternion.identity, parent));
+        SetRemainingLength();
+    }
+    private void RemoveNewestRopePoint()
+    {
+        Debug.Log("removing point");
+        Destroy(rp[rp.Count - 1]);
+        rp.Remove(rp[rp.Count - 1]);
+        transform.position = rp[rp.Count - 1].transform.position;
+        SetRemainingLength();
+    }
+
+    private void SetRemainingLength()
+    {
+        remainingLength = CurrentLength;
+        for (int i = 1; i < rp.Count; i++)
         {
-            Debug.DrawRay(ropePoints[i-1], ropePoints[i] - ropePoints[i-1], Color.yellow, 1);
+            remainingLength -= Vector3.Distance(rp[i - 1].transform.position, rp[i].transform.position);
         }
-        Debug.DrawRay(ropePoints[ropePoints.Count-1], hookBase.transform.position - ropePoints[ropePoints.Count - 1], Color.yellow, 1);
+        joint.linearLimit = SetLinearLimit(joint, remainingLength);
     }
 
     private SoftJointLimit SetLinearLimit(ConfigurableJoint joint, float Lenght)
@@ -84,6 +125,16 @@ public class hookBehaviour : MonoBehaviour
         softJoint.limit = Lenght;
 
         return softJoint;
+    }
+
+    private void DebugRope()
+    {
+        for (int i = 1; i < rp.Count; i++)
+        {
+            //Debug.DrawRay(rp[i].transform.position, Vector3.up, Color.yellow, 1);
+            //Debug.DrawRay(rp[i-1].transform.position, rp[i].transform.position - rp[i-1].transform.position, Color.yellow, 1);
+        }
+        //Debug.DrawRay(rp[rp.Count-1].transform.position, hookBase.transform.position - rp[rp.Count - 1].transform.position, Color.yellow);
     }
 
     void constrainPosition(bool boolean)
@@ -104,52 +155,57 @@ public class hookBehaviour : MonoBehaviour
         HighlightCrosshair(shotBool);
     }
 
-    private void AddToRopePoint(Vector3 point)
-    {
-        transform.position = point;
-        ropePoints.Add(point);
-        SetRemainingLength();
-    }
-    private void RemoveNewestRopePoint()
-    {
-        ropePoints.Remove(ropePoints[ropePoints.Count - 1]);
-        transform.position = ropePoints[ropePoints.Count - 1];
-        SetRemainingLength();
-
-    }
-
-    private void SetRemainingLength()
-    {
-        remainingLength = maxLength;
-        for (int i = 1; i < ropePoints.Count; i++)
-        {
-            remainingLength -= Vector3.Distance(ropePoints[i - 1], ropePoints[i]);
-        }
-        joint.linearLimit = SetLinearLimit(joint, remainingLength);
-    }
-
     public void ShootHook()
     {
         if(shotBool) //if the ray cast did hit something,
         {
-            AddToRopePoint(shotHit.point); //move hook to hit point
-
+            CurrentLength = (shotHit.point - hookBase.transform.position).magnitude;
+            Debug.Log("Shot distance: "+shotHit.distance);
+            AddRopePoint(shotHit.point,shotHit.transform); //move hook to hit point
             transform.SetParent(shotHit.transform); // set the object that was hit as a parent
+            isHooked = true;
         }
         else
         {
             ResetHook();
         }
-        isHooked = shotBool;
+
+    }
+
+    public void QuickReel()
+    {
+        ReelRope(-1, quickReelMultiplier);
+        if (CurrentLength <= minLength)
+        {
+            ResetHook();
+        }
+    }
+
+    public void ReelRope(float input, float multiplier = 1)
+    {
+
+        CurrentLength += input * reelSpeed * multiplier * Time.deltaTime;
+
+        if (CurrentLength > maxLength)
+        {
+            CurrentLength = maxLength;
+        }
+        else if (CurrentLength < minLength)
+        {
+            CurrentLength = minLength;
+        }
+
+        SetRemainingLength();
     }
 
     public void ResetHook()
     {
         transform.SetPositionAndRotation(hookBase.transform.position, hookBase.transform.rotation);
         UniversalFunctions.SetGlobalScale(transform, new Vector3 (0.1f,0.1f, 0.2f));
-        ropePoints.Clear();
-
+        rp.Clear();
+        joint.linearLimit = SetLinearLimit(joint, maxLength);
         transform.SetParent(joint.transform);
+        isHooked = false;
     }
 
     public void SetCrosshair(bool b)
@@ -169,5 +225,10 @@ public class hookBehaviour : MonoBehaviour
             tempColor.a = 0.5f;
         }
         crosshair.color = tempColor;
+    }
+
+    public List<GameObject> GetRopePoints()
+    {
+        return rp;
     }
 }

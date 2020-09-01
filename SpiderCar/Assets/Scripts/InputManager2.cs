@@ -24,11 +24,16 @@ public class InputManager2 : MonoBehaviour
     string jump;
     string shoot;
     string aimMode;
+    string cancel;
+    string quickReel;
+    string pause;
+
     // stick values
     float verticalVal;
     float horizontalVal;
     float camYVal;
     float camXVal;
+    string reelControl;
 
 
 
@@ -66,7 +71,10 @@ public class InputManager2 : MonoBehaviour
         jump = "Jump"+playerNumber;
         shoot = "Shoot"+playerNumber;
         aimMode = "AimMode" + playerNumber;
-
+        reelControl = "DPadY" + playerNumber;
+        cancel = "Cancel" + playerNumber;
+        quickReel = "QuickReel" + playerNumber;
+        pause = "Pause" + playerNumber;
 
         dc = GetComponent<DriveController>();
         sc = GetComponent<SwingController>();
@@ -175,6 +183,18 @@ public class InputManager2 : MonoBehaviour
            dc.Reverse(0);
         }
 
+        if (Input.GetButtonDown(cancel))
+        {
+            if (hb.GetIsHooked())
+            {
+                hb.ResetHook();
+            }
+        }
+        if (Input.GetButtonDown(pause))
+        {
+            Debug.Break();
+        }
+
 //*****Abilities*****
         if(Input.GetButtonDown(jump) && !HasJumped)
         {
@@ -186,7 +206,7 @@ public class InputManager2 : MonoBehaviour
 
         if (Input.GetButtonDown(shoot))
         {
-            hb.ResetHook();
+
             if (!IsGrounded)
             {
                 dc.StopCarTorque();
@@ -201,6 +221,7 @@ public class InputManager2 : MonoBehaviour
         }
         if (Input.GetButtonUp(shoot))
         {
+            hb.ResetHook();
             hb.ShootHook();
             if (hb.GetIsHooked())
             {
@@ -215,7 +236,17 @@ public class InputManager2 : MonoBehaviour
         if (hb.GetIsHooked())
         {
             hb.RopeBendingCheck();
+
+            hb.ReelRope(Input.GetAxis(reelControl));
         }
+        if (Input.GetButton(quickReel))
+        {
+            if (hb.GetIsHooked())
+            {
+                hb.QuickReel();
+            }
+        }
+
 
 
         if (Input.GetButtonDown(aimMode))
@@ -267,4 +298,7 @@ public class InputManager2 : MonoBehaviour
         }
         return true;
     }
+
+
+    
 }
